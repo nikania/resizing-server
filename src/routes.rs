@@ -1,5 +1,7 @@
 use actix_web::{get, post, HttpResponse, Responder};
 
+use crate::resizing;
+
 // don't understand which REST method to use, how to do routing
 #[post("/upload")]
 async fn upload(req_body: String) -> impl Responder {
@@ -26,6 +28,8 @@ async fn crop(req_body: String) -> impl Responder {
 
 #[post("/resize")]
 async fn resize(req_body: String) -> impl Responder {
+
+    resizing::run((765,345));
     HttpResponse::Ok().body(req_body)
 }
 

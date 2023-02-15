@@ -2,6 +2,7 @@ use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use routes::{upload, download, crop, convert, resize};
 
 mod routes;
+mod resizing;
 
 #[get("/")]
 async fn hello() -> impl Responder {
