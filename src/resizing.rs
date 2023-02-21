@@ -1,5 +1,8 @@
-use std::io::BufWriter;
+use std::io::{BufWriter, Write};
 use std::num::NonZeroU32;
+use std::env;
+use std::fs::{self, File};
+use std::path::Path;
 
 use image::codecs::png::PngEncoder;
 use image::io::Reader as ImageReader;
@@ -7,11 +10,15 @@ use image::{ColorType, ImageEncoder};
 
 use fast_image_resize as fr;
 
-type Dimensions = (u32,u32);
+use crate::routes::ResizeData;
 
-pub fn run(target: Dimensions) {
+
+pub fn run(body: ResizeData) -> String {
+    let target = body.dimensions;
+    let current = env::current_dir().unwrap().into_os_string().into_string().unwrap();
+    println!("current path: {current}");
     // Read source image from file
-    let img = ImageReader::open("./data/nasa-4928x3279.png")
+    let img = ImageReader::open("./data/doll.png")
         .unwrap()
         .decode()
         .unwrap();
@@ -63,4 +70,9 @@ pub fn run(target: Dimensions) {
             ColorType::Rgba8,
         )
         .unwrap();
+
+    // save result to file
+    image::save_buffer("./data/image.png", dst_image.buffer(), target.0, target.1, image::ColorType::Rgba8).unwrap();
+
+    "Ok".into()
 }
