@@ -1,7 +1,7 @@
-use std::io::{BufWriter, Write};
-use std::num::NonZeroU32;
 use std::env;
 use std::fs::{self, File};
+use std::io::{BufWriter, Write};
+use std::num::NonZeroU32;
 use std::path::Path;
 
 use image::codecs::png::PngEncoder;
@@ -10,18 +10,22 @@ use image::{ColorType, ImageEncoder};
 
 use fast_image_resize as fr;
 
+use crate::common::AppError;
 use crate::routes::ResizeData;
 
-
-pub fn run(body: ResizeData) -> String {
-    let target = body.dimensions;
-    let current = env::current_dir().unwrap().into_os_string().into_string().unwrap();
-    println!("current path: {current}");
+pub fn run(data: ResizeData) -> Result<String, AppError> {
+    let target = data.dimensions;
+    // let current = env::current_dir().unwrap().into_os_string().into_string().unwrap();
+    // println!("current path: {current}");
     // Read source image from file
-    let img = ImageReader::open("./data/doll.png")
-        .unwrap()
-        .decode()
-        .unwrap();
+    let filepath = "./data/".to_owned();
+    let mut filename = filepath.clone();
+    filename.push_str(&data.filename);
+    filename.push_str(".");
+    filename.push_str(&data.file_extension);
+    let img = ImageReader::open(filename)
+        .map_err(|_| AppError::NotFoundError { obj: "File not found".into() })?
+        .decode().unwrap();
     let width = NonZeroU32::new(img.width()).unwrap();
     let height = NonZeroU32::new(img.height()).unwrap();
     let mut src_image = fr::Image::from_vec_u8(
@@ -29,9 +33,10 @@ pub fn run(body: ResizeData) -> String {
         height,
         img.to_rgba8().into_raw(),
         fr::PixelType::U8x4,
-    ).unwrap();
+    )
+    .unwrap();
 
-    // Multiple RGB channels of source image by alpha channel 
+    // Multiple RGB channels of source image by alpha channel
     // (not required for the Nearest algorithm)
     let alpha_mul_div = fr::MulDiv::default();
     alpha_mul_div
@@ -41,20 +46,14 @@ pub fn run(body: ResizeData) -> String {
     // Create container for data of destination image
     let dst_width = NonZeroU32::new(target.0).unwrap();
     let dst_height = NonZeroU32::new(target.1).unwrap();
-    let mut dst_image = fr::Image::new(
-        dst_width,
-        dst_height,
-        src_image.pixel_type(),
-    );
+    let mut dst_image = fr::Image::new(dst_width, dst_height, src_image.pixel_type());
 
     // Get mutable view of destination image data
     let mut dst_view = dst_image.view_mut();
 
     // Create Resizer instance and resize source image
     // into buffer of destination image
-    let mut resizer = fr::Resizer::new(
-        fr::ResizeAlg::Convolution(fr::FilterType::Lanczos3),
-    );
+    let mut resizer = fr::Resizer::new(fr::ResizeAlg::Convolution(fr::FilterType::Lanczos3));
     resizer.resize(&src_image.view(), &mut dst_view).unwrap();
 
     // Divide RGB channels of destination image by alpha
@@ -70,9 +69,20 @@ pub fn run(body: ResizeData) -> String {
             ColorType::Rgba8,
         )
         .unwrap();
-
+    
+    let mut resized_filename = filepath.clone();
+    resized_filename.push_str(&data.filename);
+    resized_filename.push_str("_res.");
+    resized_filename.push_str(&data.file_extension);
     // save result to file
-    image::save_buffer("./data/image.png", dst_image.buffer(), target.0, target.1, image::ColorType::Rgba8).unwrap();
+    image::save_buffer(
+        resized_filename,
+        dst_image.buffer(),
+        target.0,
+        target.1,
+        image::ColorType::Rgba8,
+    )
+    .unwrap();
 
-    "Ok".into()
+    Ok("ok".into())
 }

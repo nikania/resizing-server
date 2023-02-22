@@ -1073,6 +1073,7 @@ name = "resizing-server"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "derive_more",
  "fast_image_resize",
  "image",
  "serde",
