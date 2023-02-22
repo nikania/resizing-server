@@ -4,6 +4,7 @@ use routes::{convert, crop, download, resize, upload};
 mod common;
 mod resizing;
 mod routes;
+mod upload_file;
 
 #[get("/")]
 async fn hello() -> impl Responder {

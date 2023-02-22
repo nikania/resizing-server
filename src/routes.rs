@@ -1,13 +1,46 @@
+use crate::{common::AppError, resizing, upload_file};
+use actix_multipart::Multipart;
 use actix_web::{get, post, FromRequest, HttpResponse, Responder};
-
-use crate::{resizing, common::AppError};
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use std::{
+    fs::File,
+    io::{BufReader, Read, Write},
+};
 
-// don't understand which REST method to use, how to do routing
 #[post("/upload")]
-async fn upload(req_body: String) -> impl Responder {
-    HttpResponse::Ok().body(req_body)
+async fn upload(mut payload: Multipart) -> Result<HttpResponse, AppError> {
+    // iterate over multipart stream
+    while let Some(item) = payload.next().await {
+        let mut field = item.map_err(|e| AppError::MultipartError {
+            error: e.to_string(),
+        })?;
+        let filename = "./data/some.png";
+        let mut file = File::create(filename).map_err(|_| AppError::InternalError)?;
+        let mut buf = Vec::new();
+
+        // Field in turn is stream of *Bytes* object
+        while let Some(chunk) = field.next().await {
+            match chunk {
+                Ok(ch) => {
+                    buf.append(&mut ch.to_vec());
+                }
+                Err(e) => {
+                    return Err(AppError::MultipartError {
+                        error: e.to_string(),
+                    })
+                }
+            }
+        }
+        file.write_all(buf.as_slice())
+            .map_err(|e| AppError::MultipartError {
+                error: e.to_string(),
+            })?;
+    }
+
+    let result = upload_file::run()?;
+    Ok(HttpResponse::Ok().body(result))
 }
 
 #[get("/download")]
@@ -33,14 +66,16 @@ type Dimensions = (u32, u32);
 pub struct ResizeData {
     pub session: u64,
     pub filename: String,
+    // TODO use image::ImageFormat instead
     pub file_extension: String,
     pub dimensions: Dimensions,
 }
 
 #[post("/resize")]
 async fn resize(req_body: String) -> Result<String, AppError> {
-    let body = serde_json::from_str::<ResizeData>(&req_body)
-        .map_err(|e| AppError::BadRequest { error: e.to_string() })?;
+    let body = serde_json::from_str::<ResizeData>(&req_body).map_err(|e| AppError::BadRequest {
+        error: e.to_string(),
+    })?;
 
     let result = resizing::run(body)?;
     Ok(result)

@@ -24,8 +24,11 @@ pub fn run(data: ResizeData) -> Result<String, AppError> {
     filename.push_str(".");
     filename.push_str(&data.file_extension);
     let img = ImageReader::open(filename)
-        .map_err(|_| AppError::NotFoundError { obj: "File not found".into() })?
-        .decode().unwrap();
+        .map_err(|_| AppError::NotFoundError {
+            error: "File not found".into(),
+        })?
+        .decode()
+        .unwrap();
     let width = NonZeroU32::new(img.width()).unwrap();
     let height = NonZeroU32::new(img.height()).unwrap();
     let mut src_image = fr::Image::from_vec_u8(
@@ -69,7 +72,7 @@ pub fn run(data: ResizeData) -> Result<String, AppError> {
             ColorType::Rgba8,
         )
         .unwrap();
-    
+
     let mut resized_filename = filepath.clone();
     resized_filename.push_str(&data.filename);
     resized_filename.push_str("_res.");
