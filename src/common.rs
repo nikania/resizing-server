@@ -26,3 +26,5 @@ impl ResponseError for AppError {
         }
     }
 }
+
+pub const PATH: &str = "./data/";

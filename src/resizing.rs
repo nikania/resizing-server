@@ -2,7 +2,6 @@ use std::env;
 use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::num::NonZeroU32;
-use std::path::Path;
 
 use image::codecs::png::PngEncoder;
 use image::io::Reader as ImageReader;
@@ -10,19 +9,17 @@ use image::{ColorType, ImageEncoder};
 
 use fast_image_resize as fr;
 
-use crate::common::AppError;
+use crate::common::{AppError, PATH};
 use crate::routes::ResizeData;
 
-pub fn run(data: ResizeData) -> Result<String, AppError> {
-    let target = data.dimensions;
+pub fn run(id: u64, data: ResizeData) -> Result<String, AppError> {
     // let current = env::current_dir().unwrap().into_os_string().into_string().unwrap();
     // println!("current path: {current}");
     // Read source image from file
-    let filepath = "./data/".to_owned();
+    let filepath = format!("{PATH}/{id}/");
     let mut filename = filepath.clone();
-    filename.push_str(&data.filename);
-    filename.push_str(".");
-    filename.push_str(&data.file_extension);
+    filename.push_str(&format!("{}.{}", data.filename, data.file_extension));
+
     let img = ImageReader::open(filename)
         .map_err(|_| AppError::NotFoundError {
             error: "File not found".into(),
@@ -47,8 +44,8 @@ pub fn run(data: ResizeData) -> Result<String, AppError> {
         .unwrap();
 
     // Create container for data of destination image
-    let dst_width = NonZeroU32::new(target.0).unwrap();
-    let dst_height = NonZeroU32::new(target.1).unwrap();
+    let dst_width = NonZeroU32::new(data.dimensions.0).unwrap();
+    let dst_height = NonZeroU32::new(data.dimensions.1).unwrap();
     let mut dst_image = fr::Image::new(dst_width, dst_height, src_image.pixel_type());
 
     // Get mutable view of destination image data
@@ -81,8 +78,8 @@ pub fn run(data: ResizeData) -> Result<String, AppError> {
     image::save_buffer(
         resized_filename,
         dst_image.buffer(),
-        target.0,
-        target.1,
+        data.dimensions.0,
+        data.dimensions.1,
         image::ColorType::Rgba8,
     )
     .unwrap();
