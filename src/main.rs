@@ -5,6 +5,7 @@ mod common;
 mod resizing;
 mod routes;
 mod upload_file;
+mod download_file;
 
 #[get("/")]
 async fn hello() -> impl Responder {
